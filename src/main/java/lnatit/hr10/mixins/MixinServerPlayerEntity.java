@@ -29,7 +29,8 @@ import java.util.UUID;
 @Mixin(ServerPlayerEntity.class)
 public abstract class MixinServerPlayerEntity extends PlayerEntity
 {
-    @Shadow public abstract void sendMessage(ITextComponent component, UUID senderUUID);
+    @Shadow
+    public abstract void sendMessage(ITextComponent component, UUID senderUUID);
 
     public MixinServerPlayerEntity(World world, BlockPos at, float yaw, GameProfile profile) throws IllegalAccessException
     {
@@ -39,72 +40,77 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
 
     @Inject(
             method = "trySleep",
-            at = @At("HEAD"),
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/entity/player/ServerPlayerEntity;func_242111_a(Lnet/minecraft/util/RegistryKey;Lnet/minecraft/util/math/BlockPos;FZZ)V",
+                    remap = false
+            ),
             cancellable = true
     )
     private void $trySleep(BlockPos at, CallbackInfoReturnable<Either<PlayerEntity.SleepResult, Unit>> cir)
     {
         java.util.Optional<BlockPos> optAt = java.util.Optional.of(at);
-        PlayerEntity.SleepResult ret = net.minecraftforge.event.ForgeEventFactory.onPlayerSleepInBed(this, optAt);
-        if (ret != null)
-            cir.setReturnValue(Either.left(ret));
-//            return Either.left(ret);
-        Direction direction = this.world.getBlockState(at).get(HorizontalBlock.HORIZONTAL_FACING);
-        if (!this.isSleeping() && this.isAlive())
-        {
-            if (!this.world.getDimensionType().isNatural())
-                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE));
-//                return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE);
-            else if (!this.func_241147_a_(at, direction))
-                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY));
-//                return Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY);
-            else if (this.func_241156_b_(at, direction))
-                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OBSTRUCTED));
-//                return Either.left(PlayerEntity.SleepResult.OBSTRUCTED);
-            else
-            {
-//                this.func_242111_a(this.world.getDimensionKey(), at, this.rotationYaw, false, true);
-                this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), null);
-                if (!net.minecraftforge.event.ForgeEventFactory.fireSleepingTimeCheck(this, optAt))
-                    cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW));
+//        PlayerEntity.SleepResult ret = net.minecraftforge.event.ForgeEventFactory.onPlayerSleepInBed(this, optAt);
+//        if (ret != null)
+//            cir.setReturnValue(Either.left(ret));
+////            return Either.left(ret);
+//        Direction direction = this.world.getBlockState(at).get(HorizontalBlock.HORIZONTAL_FACING);
+//        if (!this.isSleeping() && this.isAlive())
+//        {
+//            if (!this.world.getDimensionType().isNatural())
+//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE));
+////                return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE);
+//            else if (!this.func_241147_a_(at, direction))
+//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY));
+////                return Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY);
+//            else if (this.func_241156_b_(at, direction))
+//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OBSTRUCTED));
+////                return Either.left(PlayerEntity.SleepResult.OBSTRUCTED);
+//            else
+//            {
+////                this.func_242111_a(this.world.getDimensionKey(), at, this.rotationYaw, false, true);
+        this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), null);
+        if (!net.minecraftforge.event.ForgeEventFactory.fireSleepingTimeCheck(this, optAt))
+            cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW));
 //                    return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW);
-                else
-                {
-                    if (!this.isCreative())
-                    {
-                        Vector3d vector3d = Vector3d.copyCenteredHorizontally(at);
-                        List<MonsterEntity> list = this.world.getEntitiesWithinAABB(MonsterEntity.class,
-                                                                                    new AxisAlignedBB(
-                                                                                            vector3d.getX() - 8.0D,
-                                                                                            vector3d.getY() - 5.0D,
-                                                                                            vector3d.getZ() - 8.0D,
-                                                                                            vector3d.getX() + 8.0D,
-                                                                                            vector3d.getY() + 5.0D,
-                                                                                            vector3d.getZ() + 8.0D
-                                                                                    ), p_241146_1_ ->
-                                                                                            p_241146_1_.func_230292_f_(this)
-                        );
-                        if (!list.isEmpty())
-                            cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_SAFE));
-//                            return Either.left(PlayerEntity.SleepResult.NOT_SAFE);
-                    }
-
-                    Either<PlayerEntity.SleepResult, Unit> either = super.trySleep(at).ifRight((p_241144_1_) ->
-                                                                                               {
-                                                                                                   this.addStat(
-                                                                                                           Stats.SLEEP_IN_BED);
-                                                                                                   CriteriaTriggers.SLEPT_IN_BED.trigger(
-                                                                                                           (ServerPlayerEntity) (Object) this);
-                                                                                               });
-                    ((ServerWorld) this.world).updateAllPlayersSleepingFlag();
-                    cir.setReturnValue(either);
-//                    return either;
-                }
-            }
-        }
         else
-            cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM));
-//            return Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM);
+        {
+            if (!this.isCreative())
+            {
+                Vector3d vector3d = Vector3d.copyCenteredHorizontally(at);
+                List<MonsterEntity> list = this.world.getEntitiesWithinAABB(MonsterEntity.class,
+                                                                            new AxisAlignedBB(
+                                                                                    vector3d.getX() - 8.0D,
+                                                                                    vector3d.getY() - 5.0D,
+                                                                                    vector3d.getZ() - 8.0D,
+                                                                                    vector3d.getX() + 8.0D,
+                                                                                    vector3d.getY() + 5.0D,
+                                                                                    vector3d.getZ() + 8.0D
+                                                                            ), p_241146_1_ ->
+                                                                                    p_241146_1_.func_230292_f_(
+                                                                                            this)
+                );
+                if (!list.isEmpty())
+                    cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_SAFE));
+//                            return Either.left(PlayerEntity.SleepResult.NOT_SAFE);
+            }
+
+            Either<PlayerEntity.SleepResult, Unit> either = super.trySleep(at).ifRight((p_241144_1_) ->
+                                                                                       {
+                                                                                           this.addStat(
+                                                                                                   Stats.SLEEP_IN_BED);
+                                                                                           CriteriaTriggers.SLEPT_IN_BED.trigger(
+                                                                                                   (ServerPlayerEntity) (Object) this);
+                                                                                       });
+            ((ServerWorld) this.world).updateAllPlayersSleepingFlag();
+            cir.setReturnValue(either);
+//                    return either;
+        }
+//            }
+//        }
+//        else
+//            cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM));
+////            return Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM);
     }
 
     @Shadow
