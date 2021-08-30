@@ -10,19 +10,14 @@ import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.EnumProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BedPart;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Hand;
+import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Explosion;
-import net.minecraft.world.ExplosionContext;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraftforge.common.extensions.IForgeBlock;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -35,11 +30,11 @@ import static net.minecraft.block.BedBlock.doesBedWork;
 import static net.minecraft.block.HorizontalBlock.HORIZONTAL_FACING;
 
 @Mixin(BedBlock.class)
-public class MixinBedBlock extends Block implements IBedBlock
+public abstract class MixinBedBlock extends Block implements IBedBlock
 {
     @Final
     @Shadow
-    private static EnumProperty<BedPart> PART;
+    public static EnumProperty<BedPart> PART;
     @Final
     @Shadow
     public static BooleanProperty OCCUPIED;
@@ -74,12 +69,12 @@ public class MixinBedBlock extends Block implements IBedBlock
         }
         else
         {
-            player.sendMessage(new StringTextComponent("This is a fucking shitty bed!!!"), null);
+            player.sendMessage(new StringTextComponent("This is a fucking shitty bed!!!"), Util.DUMMY_UUID);
             if (state.get(PART) != BedPart.HEAD)
             {
                 pos = pos.offset(state.get(HORIZONTAL_FACING));
                 state = worldIn.getBlockState(pos);
-                if (!state.matchesBlock((Block) (Object) this))
+                if (!state.matchesBlock(this))
                 {
                     cir.setReturnValue(ActionResultType.CONSUME);
 //                    return ActionResultType.CONSUME;
@@ -90,12 +85,12 @@ public class MixinBedBlock extends Block implements IBedBlock
             {
                 worldIn.removeBlock(pos, false);
                 BlockPos blockpos = pos.offset(state.get(HORIZONTAL_FACING).getOpposite());
-                if (worldIn.getBlockState(blockpos).matchesBlock((Block) (Object) this))
+                if (worldIn.getBlockState(blockpos).matchesBlock(this))
                 {
                     worldIn.removeBlock(blockpos, false);
                 }
 
-                worldIn.createExplosion((Entity) null, DamageSource.causeBedExplosionDamage(), (ExplosionContext) null,
+                worldIn.createExplosion(null, DamageSource.causeBedExplosionDamage(), null,
                                         (double) pos.getX() + 0.5D, (double) pos.getY() + 0.5D,
                                         (double) pos.getZ() + 0.5D, 5.0F, true, Explosion.Mode.DESTROY
                 );
@@ -163,6 +158,9 @@ public class MixinBedBlock extends Block implements IBedBlock
     public void setBedOccupied(BlockState state, World world, BlockPos pos, LivingEntity sleeper, boolean occupied)
     {
         super.setBedOccupied(state, world, pos, sleeper, occupied);
+//        if (sleeper.isSneaking() && occupied)
+//            this.setBedPartly(state, world, pos, sleeper, !state.get(PARTLY));
+//        else this.setBedPartly(state, world, pos, sleeper, false);
     }
 
     @Shadow

@@ -2,18 +2,20 @@ package lnatit.hr10.mixins;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.datafixers.util.Either;
+import lnatit.hr10.interfaces.IBedBlock;
 import net.minecraft.advancements.CriteriaTriggers;
-import net.minecraft.block.HorizontalBlock;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.stats.Stats;
-import net.minecraft.util.Direction;
+import net.minecraft.util.RegistryKey;
 import net.minecraft.util.Unit;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
@@ -21,16 +23,19 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import javax.annotation.Nullable;
 import java.util.List;
-import java.util.UUID;
+
+import static lnatit.hr10.interfaces.IBedBlock.PARTLY;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class MixinServerPlayerEntity extends PlayerEntity
 {
-    @Shadow
-    public abstract void sendMessage(ITextComponent component, UUID senderUUID);
+    private boolean doLastSleepVaild;
+    private long lastSleepStartTime;
 
     public MixinServerPlayerEntity(World world, BlockPos at, float yaw, GameProfile profile) throws IllegalAccessException
     {
@@ -50,26 +55,7 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
     private void $trySleep(BlockPos at, CallbackInfoReturnable<Either<PlayerEntity.SleepResult, Unit>> cir)
     {
         java.util.Optional<BlockPos> optAt = java.util.Optional.of(at);
-//        PlayerEntity.SleepResult ret = net.minecraftforge.event.ForgeEventFactory.onPlayerSleepInBed(this, optAt);
-//        if (ret != null)
-//            cir.setReturnValue(Either.left(ret));
-////            return Either.left(ret);
-//        Direction direction = this.world.getBlockState(at).get(HorizontalBlock.HORIZONTAL_FACING);
-//        if (!this.isSleeping() && this.isAlive())
-//        {
-//            if (!this.world.getDimensionType().isNatural())
-//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE));
-////                return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_HERE);
-//            else if (!this.func_241147_a_(at, direction))
-//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY));
-////                return Either.left(PlayerEntity.SleepResult.TOO_FAR_AWAY);
-//            else if (this.func_241156_b_(at, direction))
-//                cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OBSTRUCTED));
-////                return Either.left(PlayerEntity.SleepResult.OBSTRUCTED);
-//            else
-//            {
-////                this.func_242111_a(this.world.getDimensionKey(), at, this.rotationYaw, false, true);
-        this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), null);
+        this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), Util.DUMMY_UUID);
         if (!net.minecraftforge.event.ForgeEventFactory.fireSleepingTimeCheck(this, optAt))
             cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW));
 //                    return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW);
@@ -86,14 +72,17 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
                                                                                     vector3d.getX() + 8.0D,
                                                                                     vector3d.getY() + 5.0D,
                                                                                     vector3d.getZ() + 8.0D
-                                                                            ), p_241146_1_ ->
-                                                                                    p_241146_1_.func_230292_f_(
-                                                                                            this)
+                                                                            ),
+                                                                            p_241146_1_ ->
+                                                                                    p_241146_1_.func_230292_f_(this)
                 );
                 if (!list.isEmpty())
                     cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_SAFE));
 //                            return Either.left(PlayerEntity.SleepResult.NOT_SAFE);
             }
+
+
+//            if (this.isSneaking())
 
             Either<PlayerEntity.SleepResult, Unit> either = super.trySleep(at).ifRight((p_241144_1_) ->
                                                                                        {
@@ -102,26 +91,60 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
                                                                                            CriteriaTriggers.SLEPT_IN_BED.trigger(
                                                                                                    (ServerPlayerEntity) (Object) this);
                                                                                        });
+            this.lastSleepStartTime = this.world.getDayTime();
             ((ServerWorld) this.world).updateAllPlayersSleepingFlag();
             cir.setReturnValue(either);
 //                    return either;
         }
-//            }
-//        }
-//        else
-//            cir.setReturnValue(Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM));
-////            return Either.left(PlayerEntity.SleepResult.OTHER_PROBLEM);
+    }
+
+    @Inject(
+            method = "startSleeping",
+            at = @At("RETURN")
+    )
+    private void $startSleeping(BlockPos pos, CallbackInfo ci)
+    {
+        BlockState blockstate = this.world.getBlockState(pos);
+        Block block = blockstate.getBlock();
+        if (this.isSneaking())
+        {
+            this.doLastSleepVaild = false;
+            if (blockstate.isBed(world, pos, this))
+                ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, !blockstate.get(PARTLY));
+        }
+        else
+        {
+            this.doLastSleepVaild = true;
+            ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, false);
+        }
+    }
+
+    @Inject(
+            method = "stopSleepInBed",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/entity/player/PlayerEntity;stopSleepInBed(ZZ)V",
+                    remap = false
+            )
+    )
+    private void $stopSleepInBed(boolean updateSleepingFlag, boolean displayGuiShadow, CallbackInfo ci)
+    {
+        long sleepTime = this.world.getDayTime() - lastSleepStartTime;
+        //TODO transfer to config settings
+        if (sleepTime >= 6000 && doLastSleepVaild)
+        {
+            this.func_242111_a(this.world.getDimensionKey(), this.getBedPosition().get(), this.rotationYaw, false,
+                               true
+            );
+            this.sendMessage(new StringTextComponent("your spawnpoint was reset due to your efficent sleep, good job!"),
+                             Util.DUMMY_UUID
+            );
+        }
     }
 
     @Shadow
-    private boolean func_241147_a_(BlockPos at, Direction direction)
+    public void func_242111_a(RegistryKey<World> p_242111_1_, @Nullable BlockPos p_242111_2_, float p_242111_3_, boolean p_242111_4_, boolean p_242111_5_)
     {
-        throw new IllegalStateException("Mixin failed to shadow func_241147_a_(BlockPos, Direction)");
-    }
-
-    @Shadow
-    private boolean func_241156_b_(BlockPos at, Direction direction)
-    {
-        throw new IllegalStateException("Mixin failed to shadow func_241156_b_(BlockPos, Direction)");
+        throw new IllegalStateException("Mixin failed to shadow func_242111_a(RegistryKey<World>, BlockPos, F, Z, Z)");
     }
 }
