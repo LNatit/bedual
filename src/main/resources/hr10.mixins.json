@@ -4,7 +4,8 @@
     "compatibilityLevel": "JAVA_8",
     "refmap": "mixins.hr10.refmap.json",
     "mixins": [
-        "MixinBedBlock"
+        "MixinBedBlock",
+        "MixinServerPlayerEntity"
     ],
     "minVersion": "0.8"
 }

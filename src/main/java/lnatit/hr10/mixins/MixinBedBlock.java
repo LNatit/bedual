@@ -3,6 +3,7 @@ package lnatit.hr10.mixins;
 import lnatit.hr10.interfaces.IBedBlock;
 import net.minecraft.block.*;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.DyeColor;
 import net.minecraft.state.BooleanProperty;
@@ -21,6 +22,7 @@ import net.minecraft.world.Explosion;
 import net.minecraft.world.ExplosionContext;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
+import net.minecraftforge.common.extensions.IForgeBlock;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -105,14 +107,7 @@ public class MixinBedBlock extends Block implements IBedBlock
                 if (!this.tryWakeUpVillager(worldIn, pos))
                 {
                     if (state.get(PARTLY))
-                        player.trySleep(pos).ifLeft((result) ->
-                                                    {
-                                                        if (result != null)
-                                                        {
-                                                            player.sendStatusMessage(result.getMessage(), true);
-                                                        }
-
-                                                    });
+                        tryPlayerToSleep(player, pos);
                     else player.sendStatusMessage(new TranslationTextComponent("block.minecraft.bed.occupied"), true);
                 }
                 cir.setReturnValue(ActionResultType.SUCCESS);
@@ -120,14 +115,7 @@ public class MixinBedBlock extends Block implements IBedBlock
             }
             else
             {
-                player.trySleep(pos).ifLeft((result) ->
-                                            {
-                                                if (result != null)
-                                                {
-                                                    player.sendStatusMessage(result.getMessage(), true);
-                                                }
-
-                                            });
+                tryPlayerToSleep(player, pos);
                 cir.setReturnValue(ActionResultType.SUCCESS);
 //                return ActionResultType.SUCCESS;
             }
@@ -160,6 +148,23 @@ public class MixinBedBlock extends Block implements IBedBlock
         ci.cancel();
     }
 
+    //TODO wakeup sleeper & hurt sleeper
+    @Inject(
+            method = "onFallenUpon",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void $onFallenUpon(World worldIn, BlockPos pos, Entity entityIn, float fallDistance, CallbackInfo ci)
+    {
+    }
+
+    //TODO store sleeper info for wakeup when entity fallen upon
+    @Override
+    public void setBedOccupied(BlockState state, World world, BlockPos pos, LivingEntity sleeper, boolean occupied)
+    {
+        super.setBedOccupied(state, world, pos, sleeper, occupied);
+    }
+
     @Shadow
     private boolean tryWakeUpVillager(World world, BlockPos pos)
     {
@@ -174,7 +179,6 @@ public class MixinBedBlock extends Block implements IBedBlock
                                         {
                                             player.sendStatusMessage(result.getMessage(), true);
                                         }
-
                                     });
     }
 }
