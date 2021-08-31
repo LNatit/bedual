@@ -3,6 +3,7 @@ package lnatit.hr10.mixins;
 import com.mojang.authlib.GameProfile;
 import com.mojang.datafixers.util.Either;
 import lnatit.hr10.interfaces.IBedBlock;
+import lnatit.hr10.interfaces.SleeperInfo;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -36,6 +37,8 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
 {
     private boolean doLastSleepVaild;
     private long lastSleepStartTime;
+    @Nullable
+    private SleeperInfo.SleepSide sleepSide = null;
 
     public MixinServerPlayerEntity(World world, BlockPos at, float yaw, GameProfile profile) throws IllegalAccessException
     {
@@ -129,16 +132,29 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
     )
     private void $stopSleepInBed(boolean updateSleepingFlag, boolean displayGuiShadow, CallbackInfo ci)
     {
+        this.sleepSide = null;
         long sleepTime = this.world.getDayTime() - lastSleepStartTime;
+        BlockPos pos = this.getBedPosition().get();
         //TODO transfer to config settings
-        if (sleepTime >= 6000 && doLastSleepVaild)
+        if (doLastSleepVaild)
         {
-            this.func_242111_a(this.world.getDimensionKey(), this.getBedPosition().get(), this.rotationYaw, false,
-                               true
-            );
-            this.sendMessage(new StringTextComponent("your spawnpoint was reset due to your efficent sleep, good job!"),
-                             Util.DUMMY_UUID
-            );
+            if (sleepTime >= 6000)
+            {
+                this.func_242111_a(this.world.getDimensionKey(), pos, this.rotationYaw, false,
+                                   true
+                );
+                this.sendMessage(
+                        new StringTextComponent("your spawnpoint was reset due to your efficent sleep, good job!"),
+                        Util.DUMMY_UUID
+                );
+            }
+        }
+        else
+        {
+            BlockState blockstate = this.world.getBlockState(pos);
+            Block block = blockstate.getBlock();
+            if (blockstate.isBed(world, pos, this))
+                ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, !blockstate.get(PARTLY));
         }
     }
 
