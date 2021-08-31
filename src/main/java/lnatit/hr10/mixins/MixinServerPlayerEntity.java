@@ -3,6 +3,7 @@ package lnatit.hr10.mixins;
 import com.mojang.authlib.GameProfile;
 import com.mojang.datafixers.util.Either;
 import lnatit.hr10.interfaces.IBedBlock;
+import lnatit.hr10.interfaces.IPlayerEntity;
 import lnatit.hr10.interfaces.SleeperInfo;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.block.Block;
@@ -33,12 +34,12 @@ import java.util.List;
 import static lnatit.hr10.interfaces.IBedBlock.PARTLY;
 
 @Mixin(ServerPlayerEntity.class)
-public abstract class MixinServerPlayerEntity extends PlayerEntity
+public abstract class MixinServerPlayerEntity extends PlayerEntity implements IPlayerEntity
 {
     private boolean doLastSleepVaild;
     private long lastSleepStartTime;
-    @Nullable
-    private SleeperInfo.SleepSide sleepSide = null;
+//    @Nullable
+//    private SleeperInfo.SleepSide sleepSide = null;
 
     public MixinServerPlayerEntity(World world, BlockPos at, float yaw, GameProfile profile) throws IllegalAccessException
     {
@@ -132,7 +133,7 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
     )
     private void $stopSleepInBed(boolean updateSleepingFlag, boolean displayGuiShadow, CallbackInfo ci)
     {
-        this.sleepSide = null;
+//        this.sleepSide = null;
         long sleepTime = this.world.getDayTime() - lastSleepStartTime;
         BlockPos pos = this.getBedPosition().get();
         //TODO transfer to config settings

@@ -53,7 +53,8 @@ public class SleeperInfo
     public enum SleepSide implements IStringSerializable
     {
         LEFT("ss_left"),    //0
-        RIGHT("ss_right");  //1
+        RIGHT("ss_right"),
+        NOT_SLEEPING(null);  //1
 
         private final String name;
 

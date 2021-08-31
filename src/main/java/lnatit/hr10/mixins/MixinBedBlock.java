@@ -151,6 +151,12 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
     )
     private void $onFallenUpon(World worldIn, BlockPos pos, Entity entityIn, float fallDistance, CallbackInfo ci)
     {
+        if (worldIn.getBlockState(pos).get(OCCUPIED))
+        {
+            super.onFallenUpon(worldIn, pos, entityIn, fallDistance * 0.4F);
+            ci.cancel();
+//            worldIn.getTileEntity()
+        }
     }
 
     //TODO store sleeper info for wakeup when entity fallen upon
