@@ -2,8 +2,7 @@ package lnatit.hr10.interfaces;
 
 import javax.annotation.Nullable;
 
-public interface IPlayerEntity
+public interface IPlayerEntity extends IDuallableEntity
 {
-    @Nullable
-    SleeperInfo.SleepSide sleepSide = null;
+    void setSleepProperties(boolean doLastSleepValid, @Nullable SleeperInfo.SleepSide side);
 }

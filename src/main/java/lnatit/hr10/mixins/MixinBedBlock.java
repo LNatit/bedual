@@ -1,6 +1,8 @@
 package lnatit.hr10.mixins;
 
 import lnatit.hr10.interfaces.IBedBlock;
+import lnatit.hr10.interfaces.IDuallableEntity;
+import lnatit.hr10.interfaces.SleeperInfo;
 import net.minecraft.block.*;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -13,6 +15,7 @@ import net.minecraft.state.properties.BedPart;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
+import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Explosion;
@@ -20,6 +23,7 @@ import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -55,29 +59,36 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
         this.setDefaultState(state);
     }
 
-    @Inject(
-            method = "onBlockActivated",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private void $onBlockActivated(BlockState state, World worldIn, BlockPos pos, PlayerEntity player, Hand handIn, BlockRayTraceResult hit, CallbackInfoReturnable<ActionResultType> cir)
+//    @Inject(
+//            method = "onBlockActivated",
+//            at = @At("HEAD"),
+//            cancellable = true
+//    )
+
+    /**
+     * @author Locus_Natit
+     */
+    @Overwrite
+    public ActionResultType onBlockActivated(BlockState state, World worldIn, BlockPos pos, PlayerEntity player, Hand handIn, BlockRayTraceResult hit)
     {
         if (worldIn.isRemote)
         {
-            cir.setReturnValue(ActionResultType.CONSUME);
-//            return ActionResultType.CONSUME;
+            if (player.isSneaking())
+                ((IDuallableEntity) player).setSleepSide(SleeperInfo.getSleeperSide(worldIn, pos, player));
+//            cir.setReturnValue(ActionResultType.CONSUME);
+            return ActionResultType.CONSUME;
         }
         else
         {
-            player.sendMessage(new StringTextComponent("This is a fucking shitty bed!!!"), Util.DUMMY_UUID);
+//            player.sendMessage(new StringTextComponent("This is a fucking shitty bed!!!"), Util.DUMMY_UUID);
             if (state.get(PART) != BedPart.HEAD)
             {
                 pos = pos.offset(state.get(HORIZONTAL_FACING));
                 state = worldIn.getBlockState(pos);
                 if (!state.matchesBlock(this))
                 {
-                    cir.setReturnValue(ActionResultType.CONSUME);
-//                    return ActionResultType.CONSUME;
+//                    cir.setReturnValue(ActionResultType.CONSUME);
+                    return ActionResultType.CONSUME;
                 }
             }
 
@@ -94,8 +105,8 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
                                         (double) pos.getX() + 0.5D, (double) pos.getY() + 0.5D,
                                         (double) pos.getZ() + 0.5D, 5.0F, true, Explosion.Mode.DESTROY
                 );
-                cir.setReturnValue(ActionResultType.SUCCESS);
-//                return ActionResultType.SUCCESS;
+//                cir.setReturnValue(ActionResultType.SUCCESS);
+                return ActionResultType.SUCCESS;
             }
             else if (state.get(OCCUPIED))
             {
@@ -105,14 +116,14 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
                         tryPlayerToSleep(player, pos);
                     else player.sendStatusMessage(new TranslationTextComponent("block.minecraft.bed.occupied"), true);
                 }
-                cir.setReturnValue(ActionResultType.SUCCESS);
-//                return ActionResultType.SUCCESS;
+//                cir.setReturnValue(ActionResultType.SUCCESS);
+                return ActionResultType.SUCCESS;
             }
             else
             {
                 tryPlayerToSleep(player, pos);
-                cir.setReturnValue(ActionResultType.SUCCESS);
-//                return ActionResultType.SUCCESS;
+//                cir.setReturnValue(ActionResultType.SUCCESS);
+                return ActionResultType.SUCCESS;
             }
         }
     }
@@ -173,6 +184,11 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
     private boolean tryWakeUpVillager(World world, BlockPos pos)
     {
         throw new IllegalStateException("Mixin failed to shadow tryWakeUpVillager()");
+    }
+
+    private void storeSleeper(World world, BlockPos pos, LivingEntity sleeper)
+    {
+
     }
 
     private void tryPlayerToSleep(PlayerEntity player, BlockPos pos)

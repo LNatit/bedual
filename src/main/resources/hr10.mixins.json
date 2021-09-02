@@ -9,6 +9,8 @@
     ],
     "minVersion": "0.8",
     "client": [
+        "MixinPlayerEntity",
         "MixinLivingRenderer"
-    ]
+    ],
+    "setSourceFile": true
 }

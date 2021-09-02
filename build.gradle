@@ -156,7 +156,7 @@ jar {
         attributes([
                 "Specification-Title"     : "hr10",
                 "Specification-Vendor"    : "L_Natit",
-                "Specification-Version"   : "1", // We are version 1 of ourselves
+                "Specification-Version"   : "alpha 0.1.5",
                 "Implementation-Title"    : project.name,
                 "Implementation-Version"  : "${version}",
                 "Implementation-Vendor"   : "L_Natit",
