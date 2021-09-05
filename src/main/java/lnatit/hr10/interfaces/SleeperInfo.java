@@ -15,7 +15,6 @@ import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 import static net.minecraft.block.HorizontalBlock.HORIZONTAL_FACING;
-import static org.jline.utils.Log.warn;
 
 public class SleeperInfo
 {

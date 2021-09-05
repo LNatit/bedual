@@ -3,6 +3,7 @@ package lnatit.hr10.mixins;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import lnatit.hr10.interfaces.IDuallableEntity;
 import lnatit.hr10.interfaces.SleeperInfo;
+import net.minecraft.client.entity.player.RemoteClientPlayerEntity;
 import net.minecraft.client.renderer.entity.LivingRenderer;
 import net.minecraft.client.renderer.entity.model.EntityModel;
 import net.minecraft.entity.LivingEntity;
@@ -31,12 +32,12 @@ public abstract class MixinLivingRenderer<T extends LivingEntity, M extends Enti
                 if (side == SleeperInfo.SleepSide.LEFT)
                 {
                     matrixStackIn.rotate(Vector3f.YP.rotationDegrees(90.0F));
-                    matrixStackIn.translate(0.2D, 0.0D, -0.25D);          //left!!!!!
+                    matrixStackIn.translate((entityLiving instanceof RemoteClientPlayerEntity) ? 0.08D : 0.2D, 0.0D, -0.25D);          //left!!!!!
                 }
                 else if (side == SleeperInfo.SleepSide.RIGHT)
                 {
                     matrixStackIn.rotate(Vector3f.YP.rotationDegrees(-90.0F));
-                    matrixStackIn.translate(-0.2D, 0.0D, -0.25D);
+                    matrixStackIn.translate((entityLiving instanceof RemoteClientPlayerEntity) ? -0.08D : -0.2D, 0.0D, -0.25D);
                 }
             }
         }

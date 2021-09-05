@@ -1,7 +1,10 @@
 package lnatit.hr10.mixins;
 
 import com.mojang.datafixers.util.Either;
-import lnatit.hr10.interfaces.*;
+import lnatit.hr10.interfaces.IBedBlock;
+import lnatit.hr10.interfaces.IBedTileEntity;
+import lnatit.hr10.interfaces.IDuallableEntity;
+import lnatit.hr10.interfaces.SleeperInfo;
 import lnatit.hr10.network.NetworkReg;
 import lnatit.hr10.network.SleepInfoPacket;
 import net.minecraft.block.Block;
@@ -12,9 +15,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Unit;
-import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -108,7 +109,7 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IDuallab
     {
         this.sleepSide = side;
         if (this.world instanceof ServerWorld)
-            NetworkReg.serverSendToPlayer(new SleepInfoPacket(side), (ServerPlayerEntity) (Object) this);
+            NetworkReg.serverSendToAllPlayer(new SleepInfoPacket(side, this.getEntityId()));
     }
 
     private void resetSpawnPoints(BlockPos pos)
