@@ -3,14 +3,11 @@ package lnatit.hr10.interfaces;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
 import net.minecraft.util.IStringSerializable;
-import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 
 import javax.annotation.Nonnull;
@@ -70,7 +67,6 @@ public class SleeperInfo
     //TODO unfinished!!!
     public static class DuallableSleeper
     {
-        private int count = 0;
         private final IDuallableEntity[] sleeper = {null, null};
         private final boolean canDual;
 
@@ -79,7 +75,6 @@ public class SleeperInfo
         {
             SleepSide side = sleeper.getSleepSide();
             this.sleeper[side.index] = sleeper;
-            this.addCount();
             this.canDual = false;
         }
 
@@ -87,7 +82,6 @@ public class SleeperInfo
         public DuallableSleeper(IDuallableEntity sleeper, boolean canDual)
         {
             this.sleeper[0] = sleeper;
-            this.addCount();
             this.canDual = canDual;
         }
 
@@ -97,14 +91,12 @@ public class SleeperInfo
             {
                 this.sleeper[side.index] = sleeper;
                 sleeper.setSleepSide(side);
-                this.addCount();
                 this.canDual = true;
             }
             else
             {
                 this.sleeper[0] = sleeper;
                 sleeper.setSleepSide(null);
-                this.addCount();
                 this.canDual = false;
             }
         }
@@ -115,12 +107,10 @@ public class SleeperInfo
          * @param sleeper sleeper entity
          * @param side    sleeper side
          */
-        @Deprecated
         private void dualWithUnsafe(IDuallableEntity sleeper, @Nonnull SleepSide side)
         {
             this.sleeper[side.index] = sleeper;
             sleeper.setSleepSide(side);
-            this.addCount();
         }
 
         public boolean dualWith(IDuallableEntity sleeper, @Nonnull SleepSide side)
@@ -141,15 +131,12 @@ public class SleeperInfo
             {
                 this.sleeper[side.index] = null;
                 sleeper.setSleepSide(null);
-                this.cutCount();
                 return true;
             }
             else
             {
-                warn("trying to execute dedualWith() on a non-partly bed!!!");
                 this.sleeper[0] = null;
                 sleeper.setSleepSide(null);
-                this.cutCount();
                 return false;
             }
         }
@@ -186,32 +173,10 @@ public class SleeperInfo
             }
         }
 
-        private boolean addCount()
+        public boolean isSleeperInvalid()
         {
-            if (0 <= count && 2 > count)
-            {
-                count++;
-                return true;
-            }
-            else return false;
+            return (sleeper[0] == null && sleeper[1] == null);
         }
-
-        private boolean cutCount()
-        {
-            if (0 < count && 2 >= count)
-            {
-                count--;
-                return true;
-            }
-            else return false;
-        }
-
-//        private void recomputeCount()
-//        {
-//            count = 0;
-//            for (IDuallableEntity sleeperEntity : this.sleeper)
-//
-//        }
     }
 
     public enum SleepSide implements IStringSerializable

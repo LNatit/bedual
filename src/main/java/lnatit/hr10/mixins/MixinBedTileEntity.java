@@ -25,4 +25,11 @@ public abstract class MixinBedTileEntity implements IBedTileEntity
     {
         this.sleeper = sleeper;
     }
+
+    @Override
+    public void reinitSleeper()
+    {
+        if (this.sleeper.isSleeperInvalid())
+            this.sleeper = null;
+    }
 }

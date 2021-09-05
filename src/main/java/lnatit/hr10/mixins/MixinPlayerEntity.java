@@ -46,12 +46,12 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IDuallab
     public void startSleeping(@Nonnull BlockPos pos)
     {
         //TODO move this part to SleepInfo.class
-        {
-            this.doLastSleepValid = this.isSneaking();
-            this.lastSleepStartTime = this.world.getDayTime();
-            if (doLastSleepValid)
-                this.sleepSide = SleeperInfo.getSleeperSide(this.world, pos, this);
-        }
+//        {
+//            this.doLastSleepValid = this.isSneaking();
+//            this.lastSleepStartTime = this.world.getDayTime();
+//            if (doLastSleepValid)
+//                this.sleepSide = SleeperInfo.getSleeperSide(this.world, pos, this);
+//        }
         BlockState blockstate = this.world.getBlockState(pos);
         Block block = blockstate.getBlock();
         super.startSleeping(pos);
@@ -69,8 +69,8 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IDuallab
     )
     private void $trySleep(BlockPos at, CallbackInfoReturnable<Either<PlayerEntity.SleepResult, Unit>> cir)
     {
-        this.doLastSleepValid = this.isSneaking();
-        SleeperInfo.SleepSide sleepSide = SleeperInfo.getSleeperSide(this.world, at, this);
+        this.doLastSleepValid = !this.isSneaking();
+        SleeperInfo.SleepSide sleepSide = doLastSleepValid ? null : SleeperInfo.getSleeperSide(this.world, at, this);
         TileEntity tileEntity = this.world.getTileEntity(at);
         if (tileEntity instanceof IBedTileEntity)
         {
@@ -143,6 +143,7 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IDuallab
         if (tileEntity instanceof IBedTileEntity)
         {
             ((IBedTileEntity) tileEntity).getSleeper().dedualWith(this);
+            ((IBedTileEntity) tileEntity).reinitSleeper();
         }
     }
 }
