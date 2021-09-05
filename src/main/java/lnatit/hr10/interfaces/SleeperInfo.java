@@ -4,6 +4,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
 import net.minecraft.util.IStringSerializable;
 import net.minecraft.util.Util;
@@ -13,16 +14,23 @@ import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 
 import javax.annotation.Nonnull;
-import javax.swing.text.html.parser.Entity;
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 import static net.minecraft.block.HorizontalBlock.HORIZONTAL_FACING;
+import static org.jline.utils.Log.warn;
 
 public class SleeperInfo
 {
     public static final Vector3d VEC_OFFSET = new Vector3d(0.5, 0.5, 0.5);
 
-    public static SleeperInfo.SleepSide getSleeperSide(World world, BlockPos pos, LivingEntity sleeper)
+    public static SleepSide getSleeperSide(World world, BlockPos pos, LivingEntity sleeper)
+    {
+        SleepSide side = getSleeperSideBySleeper(world, pos, sleeper);
+        return side == null ? getSleeperSideByDirection(world, pos, sleeper) : side;
+    }
+
+    private static SleepSide getSleeperSideByDirection(World world, BlockPos pos, LivingEntity sleeper)
     {
         BlockState blockState = world.getBlockState(pos);
         Direction direction = blockState.get(HORIZONTAL_FACING).rotateYCCW();
@@ -33,84 +41,216 @@ public class SleeperInfo
         Vector3d dirVec = new Vector3d(direction.getXOffset(), direction.getYOffset(), direction.getZOffset());
         if (deltaVec.dotProduct(dirVec) >= 0)
         {
-            if (sleeper instanceof ServerPlayerEntity)
-                sleeper.sendMessage(new StringTextComponent("sleep on RIGHT side"), Util.DUMMY_UUID);
+//            if (sleeper instanceof ServerPlayerEntity)
+//                sleeper.sendMessage(new StringTextComponent("sleep on RIGHT side"), Util.DUMMY_UUID);
             return SleeperInfo.SleepSide.RIGHT;
         }
         else
         {
-            if (sleeper instanceof ServerPlayerEntity)
-                sleeper.sendMessage(new StringTextComponent("sleep on LEFT side"), Util.DUMMY_UUID);
+//            if (sleeper instanceof ServerPlayerEntity)
+//                sleeper.sendMessage(new StringTextComponent("sleep on LEFT side"), Util.DUMMY_UUID);
             return SleeperInfo.SleepSide.LEFT;
         }
     }
 
-    public class DuallableSleeper
+    private static SleepSide getSleeperSideBySleeper(World world, BlockPos pos, LivingEntity sleeper)
     {
-        private IDuallableEntity[] sleeper = {null, null};
+        TileEntity tileEntity = world.getTileEntity(pos);
+        if (tileEntity instanceof IBedTileEntity)
+        {
+            DuallableSleeper duallableSleeper = ((IBedTileEntity) tileEntity).getSleeper();
+            if (duallableSleeper != null)
+            {
+                return duallableSleeper.getEmptySide();
+            }
+        }
+        return null;
+    }
+
+    //TODO unfinished!!!
+    public static class DuallableSleeper
+    {
+        private int count = 0;
+        private final IDuallableEntity[] sleeper = {null, null};
         private final boolean canDual;
 
+        @Deprecated
         public DuallableSleeper(IDuallableEntity sleeper)
         {
-            this.sleeper[0] = sleeper;
+            SleepSide side = sleeper.getSleepSide();
+            this.sleeper[side.index] = sleeper;
+            this.addCount();
             this.canDual = false;
         }
 
+        @Deprecated
         public DuallableSleeper(IDuallableEntity sleeper, boolean canDual)
         {
             this.sleeper[0] = sleeper;
+            this.addCount();
             this.canDual = canDual;
         }
 
-        public DuallableSleeper(IDuallableEntity sleeper, @Nonnull SleepSide side)
+        public DuallableSleeper(IDuallableEntity sleeper, @Nullable SleepSide side)
         {
-            if (side == SleepSide.LEFT)
+            if (side != null)
+            {
+                this.sleeper[side.index] = sleeper;
+                sleeper.setSleepSide(side);
+                this.addCount();
+                this.canDual = true;
+            }
+            else
+            {
                 this.sleeper[0] = sleeper;
-            else this.sleeper[1] = sleeper;
-            sleeper.setSleepSide(side);
-            this.canDual = true;
+                sleeper.setSleepSide(null);
+                this.addCount();
+                this.canDual = false;
+            }
         }
 
-        public boolean dualWith(IDuallableEntity sleeper)
+        /**
+         * check this.canDual & SleepSide before execute this method!!!
+         *
+         * @param sleeper sleeper entity
+         * @param side    sleeper side
+         */
+        @Deprecated
+        private void dualWithUnsafe(IDuallableEntity sleeper, @Nonnull SleepSide side)
+        {
+            this.sleeper[side.index] = sleeper;
+            sleeper.setSleepSide(side);
+            this.addCount();
+        }
+
+        public boolean dualWith(IDuallableEntity sleeper, @Nonnull SleepSide side)
         {
             if (this.canDual)
             {
-                this.sleeper[1] = sleeper;
+                this.dualWithUnsafe(sleeper, side);
                 return true;
             }
-            else return false;
+            return false;
         }
 
         //TODO unfinished
         public boolean dedualWith(IDuallableEntity sleeper)
         {
-            return true;
+            SleepSide side = sleeper.getSleepSide();
+            if (this.canDual && side != null)
+            {
+                this.sleeper[side.index] = null;
+                sleeper.setSleepSide(null);
+                this.cutCount();
+                return true;
+            }
+            else
+            {
+                warn("trying to execute dedualWith() on a non-partly bed!!!");
+                this.sleeper[0] = null;
+                sleeper.setSleepSide(null);
+                this.cutCount();
+                return false;
+            }
         }
 
-        public void sleeperExecute(Consumer<Entity> function)
+        public SleepSide getEmptySide()
+        {
+            boolean flag = false;
+            SleepSide side = null;
+            for (int i = 0; i < 2; i++)
+            {
+                if (this.sleeper[i] == null)
+                {
+                    side = SleepSide.getSideByIndex(i);
+                    flag = !flag;
+                }
+            }
+            if (flag)
+                return side;
+            else return null;
+        }
+
+        public void sleeperExecute(Consumer<LivingEntity> function)
         {
             for (IDuallableEntity sleeperEntity : this.sleeper)
-                function.accept((Entity) (Object) sleeperEntity);
+                function.accept((LivingEntity) sleeperEntity);
         }
 
         public void playerSleeperExecute(Consumer<PlayerEntity> function)
         {
-
+            for (IDuallableEntity sleeperEntity : this.sleeper)
+            {
+                if (sleeperEntity instanceof PlayerEntity)
+                    function.accept((PlayerEntity) sleeperEntity);
+            }
         }
+
+        private boolean addCount()
+        {
+            if (0 <= count && 2 > count)
+            {
+                count++;
+                return true;
+            }
+            else return false;
+        }
+
+        private boolean cutCount()
+        {
+            if (0 < count && 2 >= count)
+            {
+                count--;
+                return true;
+            }
+            else return false;
+        }
+
+//        private void recomputeCount()
+//        {
+//            count = 0;
+//            for (IDuallableEntity sleeperEntity : this.sleeper)
+//
+//        }
     }
 
     public enum SleepSide implements IStringSerializable
     {
-        LEFT("ss_left"),    //0
-        RIGHT("ss_right");  //1
+        LEFT("ss_left", 0),    //0
+        RIGHT("ss_right", 1);  //1
 
         private final String name;
+        private final int index;
 
-        SleepSide(String name)
+        SleepSide(String name, int index)
         {
             this.name = name;
+            this.index = index;
         }
 
+        public static int getIndex(SleepSide side)
+        {
+            if (side != null)
+            return side.index;
+            else return 2;
+        }
+
+        public static SleepSide getSideByIndex(int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    return LEFT;
+                case 1:
+                    return RIGHT;
+                case 2:
+                    return null;
+                default:
+                    throw new IndexOutOfBoundsException("trying to get sleepSide by index: " + index);
+            }
+        }
+
+        @Nonnull
         @Override
         public String getString()
         {

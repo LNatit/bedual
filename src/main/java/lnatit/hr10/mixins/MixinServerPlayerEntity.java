@@ -2,6 +2,8 @@ package lnatit.hr10.mixins;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.datafixers.util.Either;
+import lnatit.hr10.interfaces.IDuallableEntity;
+import lnatit.hr10.interfaces.SleeperInfo;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -16,15 +18,19 @@ import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 @Mixin(ServerPlayerEntity.class)
-public abstract class MixinServerPlayerEntity extends PlayerEntity
+public abstract class MixinServerPlayerEntity extends PlayerEntity implements IDuallableEntity
 {
+    @Shadow public abstract Either<SleepResult, Unit> trySleep(BlockPos at);
+
     public MixinServerPlayerEntity(World world, BlockPos at, float yaw, GameProfile profile) throws IllegalAccessException
     {
         super(world, at, yaw, profile);
@@ -43,7 +49,7 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity
     private void $trySleep(BlockPos at, CallbackInfoReturnable<Either<PlayerEntity.SleepResult, Unit>> cir)
     {
         java.util.Optional<BlockPos> optAt = java.util.Optional.of(at);
-        this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), Util.DUMMY_UUID);
+//        this.sendMessage(new StringTextComponent("no more spawnpoints hahaha~"), Util.DUMMY_UUID);
         if (!net.minecraftforge.event.ForgeEventFactory.fireSleepingTimeCheck(this, optAt))
             cir.setReturnValue(Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW));
 //                    return Either.left(PlayerEntity.SleepResult.NOT_POSSIBLE_NOW);

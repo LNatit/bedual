@@ -1,6 +1,7 @@
 package lnatit.hr10.interfaces;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.state.BooleanProperty;
 import net.minecraft.util.math.BlockPos;
@@ -13,5 +14,11 @@ public interface IBedBlock
     default void setBedPartly(BlockState state, World world, BlockPos pos, LivingEntity sleeper, boolean partly)
     {
         world.setBlockState(pos, state.with(PARTLY, partly), 3);
+    }
+
+    default void sleeperDmgedByFallenEntity(LivingEntity sleeper, float fallDistance)
+    {
+        sleeper.wakeUp();
+        sleeper.onLivingFall(fallDistance, 0.7F);
     }
 }

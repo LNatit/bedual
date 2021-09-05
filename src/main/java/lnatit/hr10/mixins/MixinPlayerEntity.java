@@ -1,15 +1,17 @@
 package lnatit.hr10.mixins;
 
-import lnatit.hr10.interfaces.IBedBlock;
-import lnatit.hr10.interfaces.IPlayerEntity;
-import lnatit.hr10.interfaces.SleeperInfo;
+import com.mojang.datafixers.util.Either;
+import lnatit.hr10.interfaces.*;
+import lnatit.hr10.network.NetworkReg;
+import lnatit.hr10.network.SleepInfoPacket;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.Unit;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.StringTextComponent;
@@ -19,6 +21,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -26,7 +29,7 @@ import javax.annotation.Nullable;
 import static lnatit.hr10.interfaces.IBedBlock.PARTLY;
 
 @Mixin(PlayerEntity.class)
-public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerEntity
+public abstract class MixinPlayerEntity extends LivingEntity implements IDuallableEntity
 {
     private boolean doLastSleepValid;
     private long lastSleepStartTime;
@@ -42,11 +45,13 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerE
     @Override
     public void startSleeping(@Nonnull BlockPos pos)
     {
-        this.doLastSleepValid = this.isSneaking();
-        this.lastSleepStartTime = this.world.getDayTime();
-        if (doLastSleepValid)
-            this.sleepSide = SleeperInfo.getSleeperSide(this.world, pos, this);
-//        setSleepProperties(, this.isSneaking() ? SleeperInfo.getSleeperSide(this.world, pos, this) : null);
+        //TODO move this part to SleepInfo.class
+        {
+            this.doLastSleepValid = this.isSneaking();
+            this.lastSleepStartTime = this.world.getDayTime();
+            if (doLastSleepValid)
+                this.sleepSide = SleeperInfo.getSleeperSide(this.world, pos, this);
+        }
         BlockState blockstate = this.world.getBlockState(pos);
         Block block = blockstate.getBlock();
         super.startSleeping(pos);
@@ -55,6 +60,26 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerE
                 ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, false);
             else
                 ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, !blockstate.get(PARTLY));
+    }
+
+    @Inject(
+            method = "trySleep",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void $trySleep(BlockPos at, CallbackInfoReturnable<Either<PlayerEntity.SleepResult, Unit>> cir)
+    {
+        this.doLastSleepValid = this.isSneaking();
+        SleeperInfo.SleepSide sleepSide = SleeperInfo.getSleeperSide(this.world, at, this);
+        TileEntity tileEntity = this.world.getTileEntity(at);
+        if (tileEntity instanceof IBedTileEntity)
+        {
+            SleeperInfo.DuallableSleeper sleeper = ((IBedTileEntity) tileEntity).getSleeper();
+            if (sleeper == null)
+                ((IBedTileEntity) tileEntity).setSleeper(new SleeperInfo.DuallableSleeper(this, sleepSide));
+            else sleeper.dualWith(this, sleepSide);
+        }
+        this.lastSleepStartTime = this.world.getDayTime();
     }
 
     @Inject(
@@ -82,14 +107,8 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerE
     public void setSleepSide(@Nullable SleeperInfo.SleepSide side)
     {
         this.sleepSide = side;
-    }
-
-    @Override
-    public void setSleepProperties(boolean doLastSleepValid, @Nullable SleeperInfo.SleepSide side)
-    {
-        this.doLastSleepValid = doLastSleepValid;
-        this.lastSleepStartTime = this.world.getDayTime();
-        this.sleepSide = side;
+        if (this.world instanceof ServerWorld)
+            NetworkReg.serverSendToPlayer(new SleepInfoPacket(side), (ServerPlayerEntity) (Object) this);
     }
 
     private void resetSpawnPoints(BlockPos pos)
@@ -106,10 +125,10 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerE
                                                                    false,
                                                                    true
                 );
-                this.sendMessage(
-                        new StringTextComponent("your spawnpoint was reset due to your efficent sleep, good job!"),
-                        Util.DUMMY_UUID
-                );
+//                this.sendMessage(
+//                        new StringTextComponent("your spawnpoint was reset due to your efficent sleep, good job!"),
+//                        Util.DUMMY_UUID
+//                );
             }
         }
         else
@@ -118,6 +137,12 @@ public abstract class MixinPlayerEntity extends LivingEntity implements IPlayerE
             Block block = blockstate.getBlock();
             if (blockstate.isBed(world, pos, this))
                 ((IBedBlock) block).setBedPartly(blockstate, world, pos, this, !blockstate.get(PARTLY));
+        }
+
+        TileEntity tileEntity = this.world.getTileEntity(pos);
+        if (tileEntity instanceof IBedTileEntity)
+        {
+            ((IBedTileEntity) tileEntity).getSleeper().dedualWith(this);
         }
     }
 }

@@ -1,14 +1,28 @@
 package lnatit.hr10.mixins;
 
+import lnatit.hr10.interfaces.IBedTileEntity;
 import lnatit.hr10.interfaces.SleeperInfo;
 import net.minecraft.tileentity.BedTileEntity;
 import org.spongepowered.asm.mixin.Mixin;
 
-import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 @Mixin(BedTileEntity.class)
-public class MixinBedTileEntity
+public abstract class MixinBedTileEntity implements IBedTileEntity
 {
-    @Nonnull
-    public SleeperInfo.DuallableSleeper sleeper;
+    @Nullable
+    private SleeperInfo.DuallableSleeper sleeper = null;
+
+    @Nullable
+    @Override
+    public SleeperInfo.DuallableSleeper getSleeper()
+    {
+        return this.sleeper;
+    }
+
+    @Override
+    public void setSleeper(@Nullable SleeperInfo.DuallableSleeper sleeper)
+    {
+        this.sleeper = sleeper;
+    }
 }

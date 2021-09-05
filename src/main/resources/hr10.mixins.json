@@ -5,12 +5,13 @@
     "refmap": "mixins.hr10.refmap.json",
     "mixins": [
         "MixinBedBlock",
+        "MixinBedTileEntity",
         "MixinServerPlayerEntity"
     ],
     "minVersion": "0.8",
     "client": [
-        "MixinPlayerEntity",
-        "MixinLivingRenderer"
+        "MixinLivingRenderer",
+        "MixinPlayerEntity"
     ],
     "setSourceFile": true
 }

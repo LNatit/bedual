@@ -1,8 +1,7 @@
 package lnatit.hr10.mixins;
 
 import lnatit.hr10.interfaces.IBedBlock;
-import lnatit.hr10.interfaces.IDuallableEntity;
-import lnatit.hr10.interfaces.SleeperInfo;
+import lnatit.hr10.interfaces.IBedTileEntity;
 import net.minecraft.block.*;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -12,11 +11,13 @@ import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.EnumProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BedPart;
-import net.minecraft.util.*;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.Direction;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.IWorld;
@@ -29,6 +30,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import javax.annotation.Nonnull;
 
 import static net.minecraft.block.BedBlock.doesBedWork;
 import static net.minecraft.block.HorizontalBlock.HORIZONTAL_FACING;
@@ -59,23 +62,17 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
         this.setDefaultState(state);
     }
 
-//    @Inject(
-//            method = "onBlockActivated",
-//            at = @At("HEAD"),
-//            cancellable = true
-//    )
-
     /**
      * @author Locus_Natit
+     * @reason there are more than one part of the method need to @Inject
      */
+    @Nonnull
     @Overwrite
-    public ActionResultType onBlockActivated(BlockState state, World worldIn, BlockPos pos, PlayerEntity player, Hand handIn, BlockRayTraceResult hit)
+    public ActionResultType onBlockActivated(@Nonnull BlockState state, World worldIn, @Nonnull BlockPos pos, @Nonnull PlayerEntity player, @Nonnull Hand handIn, @Nonnull BlockRayTraceResult hit)
     {
         if (worldIn.isRemote)
         {
-            if (player.isSneaking())
-                ((IDuallableEntity) player).setSleepSide(SleeperInfo.getSleeperSide(worldIn, pos, player));
-//            cir.setReturnValue(ActionResultType.CONSUME);
+            //TODO finish clientside logic
             return ActionResultType.CONSUME;
         }
         else
@@ -165,8 +162,11 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
         if (worldIn.getBlockState(pos).get(OCCUPIED))
         {
             super.onFallenUpon(worldIn, pos, entityIn, fallDistance * 0.4F);
+            TileEntity tileEntity = worldIn.getTileEntity(pos);
+            if (tileEntity instanceof IBedTileEntity)
+                ((IBedTileEntity) tileEntity).getSleeper().sleeperExecute(
+                        sleeper -> sleeperDmgedByFallenEntity(sleeper, fallDistance * 0.2F));
             ci.cancel();
-//            worldIn.getTileEntity()
         }
     }
 
@@ -175,20 +175,13 @@ public abstract class MixinBedBlock extends Block implements IBedBlock
     public void setBedOccupied(BlockState state, World world, BlockPos pos, LivingEntity sleeper, boolean occupied)
     {
         super.setBedOccupied(state, world, pos, sleeper, occupied);
-//        if (sleeper.isSneaking() && occupied)
-//            this.setBedPartly(state, world, pos, sleeper, !state.get(PARTLY));
-//        else this.setBedPartly(state, world, pos, sleeper, false);
+
     }
 
     @Shadow
     private boolean tryWakeUpVillager(World world, BlockPos pos)
     {
         throw new IllegalStateException("Mixin failed to shadow tryWakeUpVillager()");
-    }
-
-    private void storeSleeper(World world, BlockPos pos, LivingEntity sleeper)
-    {
-
     }
 
     private void tryPlayerToSleep(PlayerEntity player, BlockPos pos)
